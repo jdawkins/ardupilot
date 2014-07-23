@@ -11,8 +11,12 @@
 #include <AP_Common.h>
 #include <GCS_MAVLink.h>
 #include <DataFlash.h>
-#include <AP_Mission.h>
+//#include <AP_Mission.h>
 #include <stdint.h>
+#include <AC_AttitudeControl.h>
+#include <AC_PosControl.h>
+#include <AP_Math.h>
+
 
 //  GCS Message ID's
 /// NOTE: to ensure we never block on sending MAVLink messages
@@ -187,9 +191,13 @@ public:
     void send_meminfo(void);
     void send_power_status(void);
     void send_ahrs2(AP_AHRS &ahrs);
+
+	void send_contol_setpoint(){};
+
     void send_gps_raw(AP_GPS &gps);
     void send_system_time(AP_GPS &gps);
     void send_radio_in(uint8_t receiver_rssi);
+
 
 private:
     void        handleMessage(mavlink_message_t * msg);
@@ -208,6 +216,9 @@ private:
                                                          // parameters for
                                                          // queued send
     uint32_t                    _queued_parameter_send_time_ms;
+	
+	//AP_Param*					_utility_parameter; 	// Parameter to be used for converting
+														//values from GCS
 
     /// Count the number of reportable parameters.
     ///
@@ -294,8 +305,8 @@ private:
     // vehicle specific message send function
     bool try_send_message(enum ap_message id);
 
-    void handle_guided_request(AP_Mission::Mission_Command &cmd);
-    void handle_change_alt_request(AP_Mission::Mission_Command &cmd);
+    //void handle_guided_request(AP_Mission::Mission_Command &cmd);
+    //void handle_change_alt_request(AP_Mission::Mission_Command &cmd);
 
     void handle_log_request_list(mavlink_message_t *msg, DataFlash_Class &dataflash);
     void handle_log_request_data(mavlink_message_t *msg, DataFlash_Class &dataflash);
@@ -304,15 +315,19 @@ private:
     void handle_log_send_listing(DataFlash_Class &dataflash);
     bool handle_log_send_data(DataFlash_Class &dataflash);
 
-    void handle_mission_request_list(AP_Mission &mission, mavlink_message_t *msg);
-    void handle_mission_request(AP_Mission &mission, mavlink_message_t *msg);
+    //void handle_mission_request_list(AP_Mission &mission, mavlink_message_t *msg);
+    //void handle_mission_request(AP_Mission &mission, mavlink_message_t *msg);
 
-    void handle_mission_set_current(AP_Mission &mission, mavlink_message_t *msg);
-    void handle_mission_count(AP_Mission &mission, mavlink_message_t *msg);
-    void handle_mission_clear_all(AP_Mission &mission, mavlink_message_t *msg);
-    void handle_mission_write_partial_list(AP_Mission &mission, mavlink_message_t *msg);
-    void handle_mission_item(mavlink_message_t *msg, AP_Mission &mission);
+    //void handle_mission_set_current(AP_Mission &mission, mavlink_message_t *msg);
+    //void handle_mission_count(AP_Mission &mission, mavlink_message_t *msg);
+    //void handle_mission_clear_all(AP_Mission &mission, mavlink_message_t *msg);
+    //void handle_mission_write_partial_list(AP_Mission &mission, mavlink_message_t *msg);
+    //void handle_mission_item(mavlink_message_t *msg, AP_Mission &mission);
 
+	//void handle_set_roll_pitch_yaw_thrust(mavlink_message_t *msg,AC_AttitudeControl *ac_ctrl,AC_PosControl *pos_ctrl);
+	void handle_manual_setpoint(mavlink_message_t *msg,AC_AttitudeControl *ac_ctrl,AC_PosControl *pos_ctrl);
+
+	
     void handle_request_data_stream(mavlink_message_t *msg, bool save);
     void handle_param_request_list(mavlink_message_t *msg);
     void handle_param_request_read(mavlink_message_t *msg);

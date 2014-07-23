@@ -22,7 +22,8 @@ public:
     float voltage_latest();
     float voltage_average_ratiometric();
     void set_stop_pin(uint8_t p);
-    void set_settle_time(uint16_t settle_time_ms);    
+    void set_settle_time(uint16_t settle_time_ms); 
+	int read_raw();
 
     /* implementation specific interface: */
 

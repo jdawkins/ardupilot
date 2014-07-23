@@ -27,7 +27,9 @@ public:
   void    mode(uint8_t output);
   uint8_t read();
   void    write(uint8_t value);
+  void    pulse();
   void    toggle();
+  unsigned long pulseIn(uint8_t pin, uint8_t state, unsigned long timeout);
 
 private:
   const uint8_t _bit;

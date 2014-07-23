@@ -43,6 +43,13 @@ float ADCSource::read_latest() {
     }
 }
 
+int ADCSource::read_raw(){
+	uint8_t sreg = SREG;
+    cli();
+    uint16_t latest = _latest;
+    SREG = sreg;
+	return latest;
+}
 /*
   return voltage from 0.0 to 5.0V, scaled to Vcc
  */

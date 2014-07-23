@@ -15,6 +15,8 @@
 #include <DataFlash.h>
 #include <AC_PID.h>
 #include <AC_P.h>
+#include <defines.h>
+
 
 // To-Do: change the name or move to AP_Math?
 #define AC_ATTITUDE_CONTROL_DEGX100 5729.57795f                 // constant to convert from radians to centi-degrees
@@ -42,6 +44,11 @@
 
 #define AC_ATTITUDE_CONTROL_RATE_BF_FF_DEFAULT          0       // body-frame rate feedforward disabled by default
 
+#define MAN_STABILIZE									0
+#define MAN_ALT_HOLD									1
+#define MAN_AUTO										2
+#define MAN_ACRO										3
+#define MAN_FREE										4 
 class AC_AttitudeControl {
 public:
 	AC_AttitudeControl( AP_AHRS &ahrs,
@@ -68,6 +75,7 @@ public:
 
 			// initialise flags
 			_flags.limit_angle_to_rate_request = true;
+			_manual_mode = 0;
 		}
 
     //
@@ -90,19 +98,30 @@ public:
     // angle_ef_roll_pitch_rate_ef_yaw_smooth - attempts to maintain a roll and pitch angle and yaw rate (all earth frame) while smoothing the attitude based on the feel parameter
     //      smoothing_gain : a number from 1 to 50 with 1 being sluggish and 50 being very crisp
     void angle_ef_roll_pitch_rate_ef_yaw_smooth(float roll_angle_ef, float pitch_angle_ef, float yaw_rate_ef, float smoothing_gain);
+    void angle_ef_roll_pitch_rate_ef_yaw_smooth(float smoothing_gain);
 
     // angle_ef_roll_pitch_rate_ef_yaw - attempts to maintain a roll and pitch angle and yaw rate (all earth frame)
     void angle_ef_roll_pitch_rate_ef_yaw(float roll_angle_ef, float pitch_angle_ef, float yaw_rate_ef);
+	
+	 // angle_ef_roll_pitch_rate_ef_yaw - attempts to maintain a roll and pitch angle and yaw rate (all earth frame)
+    // from targets set from GCS from serial port
+	void angle_ef_roll_pitch_rate_ef_yaw();
 
     // angle_ef_roll_pitch_yaw - attempts to maintain a roll, pitch and yaw angle (all earth frame)
     //  if yaw_slew is true then target yaw movement will be gradually moved to the new target based on the YAW_SLEW parameter
     void angle_ef_roll_pitch_yaw(float roll_angle_ef, float pitch_angle_ef, float yaw_angle_ef, bool slew_yaw);
-
+	
+	// angle_ef_roll_pitch_yaw - attempts to maintain a roll, pitch and yaw angle (all earth frame) from internal values set elsewhere
+	void angle_ef_roll_pitch_yaw(bool slew_yaw);
     // rate_ef_roll_pitch_yaw - attempts to maintain a roll, pitch and yaw rate (all earth frame)
     void rate_ef_roll_pitch_yaw(float roll_rate_ef, float pitch_rate_ef, float yaw_rate_ef);
 
     // rate_bf_roll_pitch_yaw - attempts to maintain a roll, pitch and yaw rate (all body frame)
     void rate_bf_roll_pitch_yaw(float roll_rate_bf, float pitch_rate_bf, float yaw_rate_bf);
+	
+	//rate_bf_roll_pitch_yaw - attempts to maintain a roll, pitch and yaw rate (all body frame)
+	//targets set from GCS this should be used for Acro mode
+	void rate_bf_roll_pitch_yaw();
 
     //
     // rate_controller_run - run lowest level body-frame rate controller and send outputs to the motors
@@ -126,6 +145,29 @@ public:
     // limit_angle_to_rate_request
     void limit_angle_to_rate_request(bool limit_request) { _flags.limit_angle_to_rate_request = limit_request; }
 
+	void set_mode(int8_t switch_mode){_manual_mode = switch_mode;}
+	int8_t get_mode(){return _manual_mode;}
+	
+	void set_thrust(int16_t thrust){_thrust_value = thrust;}
+	int16_t get_thrust(){return _thrust_value;}
+	
+	void set_ef_targets(float target_roll, float target_pitch, float target_yaw){
+		_angle_ef_target.x = target_roll;
+		_angle_ef_target.y = target_pitch;
+		_angle_ef_target.z = target_yaw;
+	} 
+	
+	void set_ef_targets_yawrate(float target_roll, float target_pitch, float target_yawrate){
+		_angle_ef_target.x = target_roll;
+		_angle_ef_target.y = target_pitch;
+		_rate_ef_desired.z = target_yawrate;
+	} 
+	
+	void set_bf_rate_targets(float target_rollrate, float target_pitchrate, float target_yawrate){
+		_rate_bf_target.x = target_rollrate;
+		_rate_bf_target.y = target_pitchrate;
+		_rate_bf_target.z = target_yawrate;
+	} 	
     // angle_ef_targets - returns angle controller earth-frame targets (for reporting)
     const Vector3f& angle_ef_targets() const { return _angle_ef_target; }
 
@@ -245,12 +287,17 @@ protected:
     // To-Do: make rate targets a typedef instead of Vector3f?
     float               _dt;                    // time delta in seconds
     Vector3f            _angle_ef_target;       // angle controller earth-frame targets
+	Vector3f			_angle_ef_target_old;	// angle controller earth-frame targets previous value
     Vector3f            _angle_bf_error;        // angle controller body-frame error
     Vector3f            _rate_bf_target;        // rate controller body-frame targets
     Vector3f            _rate_ef_desired;       // earth-frame feed forward rates
+    Vector3f            _rate_ef_desired_old;   // earth-frame feed forward rates previous value
     Vector3f            _rate_bf_desired;       // body-frame feed forward rates
+    Vector3f            _rate_bf_desired_old;   // body-frame feed forward rates previous value
     int16_t             _angle_boost;           // used only for logging
     int16_t             _acro_angle_switch;           // used only for logging
+	int8_t				_manual_mode;
+	int16_t				_thrust_value;
 };
 
 #define AC_ATTITUDE_CONTROL_LOG_FORMAT(msg) { msg, sizeof(AC_AttitudeControl::log_Attitude),	\

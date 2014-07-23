@@ -106,6 +106,13 @@
 #define HYBRID      16                  // hybrid - position hold with manual override
 #define NUM_MODES   17
 
+// Manual Pilot Modes
+// ---------------
+
+#define MAN_STABILIZE 0	//sets roll pitch yawrate thrust
+#define	MAN_ALT_HOLD 1	//sets roll pitch yawspeed and climbrate
+#define	MAN_AUTO 2	//sets roll pitch and yaw angle
+#define	MAN_ACRO 3		//sets rollrate pitchrate yawrate climbrate
 
 // CH_6 Tuning
 // -----------

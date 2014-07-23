@@ -105,6 +105,9 @@ public:
     ///     actual position target will be moved no faster than the speed_down and speed_up
     ///     target will also be stopped if the motors hit their limits or leash length is exceeded
     void set_alt_target_from_climb_rate(float climb_rate_cms, float dt);
+	
+	// Same as above but using internal target climbrate set elsewhere
+	void set_alt_target_from_climb_rate(float dt);
 
     /// get_alt_target, get_desired_alt - get desired altitude (in cm above home) from loiter or wp controller which should be fed into throttle controller
     /// To-Do: remove one of the two functions below
@@ -194,7 +197,13 @@ public:
 
     /// set_target_to_stopping_point_xy - sets horizontal target to reasonable stopping position in cm from home
     void set_target_to_stopping_point_xy();
+	
+	// set_target climb rate  in cm/s
+	void set_target_climb_rate(float climb_rate_cms){_target_climb_rate_cms = climb_rate_cms;}
 
+	float get_target_climb_rate(){return _target_climb_rate_cms;}
+	
+	float get_max_climb_rate(){return _speed_up_cms;}
     /// get_stopping_point_xy - calculates stopping point based on current position, velocity, vehicle acceleration
     ///     distance_max allows limiting distance to stopping point
     ///		results placed in stopping_position vector
@@ -253,6 +262,8 @@ private:
         uint8_t accel_xy    : 1;    // 1 if we have hit the horizontal accel limit
     } _limit;
 
+	// Internal setpoint for climbrate
+	float _target_climb_rate_cms;
     ///
     /// z controller private methods
     ///

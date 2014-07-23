@@ -3,7 +3,7 @@
 
 #include <avr/interrupt.h>
 #include <avr/io.h>
-
+#include "Scheduler.h"
 #include "utility/pins_arduino_mega.h"
 
 #include "GPIO.h"
@@ -36,7 +36,8 @@ SIGNAL(INT6_vect) {
 #define portOutputRegister(P) ( (volatile uint8_t *)( pgm_read_word( port_to_output_PGM + (P))) )
 #define portInputRegister(P) ( (volatile uint8_t *)( pgm_read_word( port_to_input_PGM + (P))) )
 #define portModeRegister(P) ( (volatile uint8_t *)( pgm_read_word( port_to_mode_PGM + (P))) )
-
+#define clockCyclesPerMicrosecond() ( F_CPU / 1000000L )
+#define clockCyclesToMicroseconds(a) ( ((a) * 1000L) / (F_CPU / 1000L) )
 
 void AVRGPIO::pinMode(uint8_t pin, uint8_t mode) {
     uint8_t bit = digitalPinToBitMask(pin);
@@ -191,6 +192,29 @@ void AVRDigitalSource::write(uint8_t value) {
     SREG = oldSREG;
 }
 
+void AVRDigitalSource::pulse() {
+    const uint8_t bit = _bit;
+    const uint8_t port = _port;
+    volatile uint8_t* out;
+    out = portOutputRegister(_port);
+	//*out = 1;
+	//*out = 0;
+	uint8_t oldSREG = SREG;
+	*out |= bit;
+	*out &= ~bit;
+
+    
+   // cli();
+
+   /* if (value == 0) {
+        *out &= ~bit;
+    } else {
+        *out |= bit;
+    }*/
+
+    SREG = oldSREG;
+}
+
 void AVRDigitalSource::toggle() {
     const uint8_t bit = _bit;
     const uint8_t port = _port;
@@ -205,6 +229,44 @@ void AVRDigitalSource::toggle() {
     SREG = oldSREG;
 }
 
+unsigned long AVRDigitalSource::pulseIn(uint8_t pin, uint8_t state, unsigned long timeout)
+{
+	// cache the port and bit of the pin in order to speed up the
+	// pulse width measuring loop and achieve finer resolution.  calling
+	// digitalRead() instead yields much coarser resolution.
+	uint8_t bit = digitalPinToBitMask(pin);
+	uint8_t port = digitalPinToPort(pin);
+	uint8_t stateMask = (state ? bit : 0);
+	unsigned long width = 0; // keep initialization out of time critical area
+	
+	// convert the timeout from microseconds to a number of times through
+	// the initial loop; it takes 16 clock cycles per iteration.
+	unsigned long numloops = 0;
+	//unsigned long maxloops = microsecondsToClockCycles(timeout) / 16;
+	unsigned long maxloops = timeout*clockCyclesPerMicrosecond() / 16;
+	// wait for any previous pulse to end
+	while ((*portInputRegister(port) & bit) == stateMask)
+		if (numloops++ == maxloops)
+			return 0;
+	
+	// wait for the pulse to start
+	while ((*portInputRegister(port) & bit) != stateMask)
+		if (numloops++ == maxloops)
+			return 0;
+	
+	// wait for the pulse to stop
+	while ((*portInputRegister(port) & bit) == stateMask) {
+		if (numloops++ == maxloops)
+			return 0;
+		width++;
+	}
+
+	// convert the reading to microseconds. The loop has been determined
+	// to be 20 clock cycles long and have about 16 clocks between the edge
+	// and the start of the loop. There will be some error introduced by
+	// the interrupt handlers.
+	return clockCyclesToMicroseconds(width * 21 + 16); 
+}
 /*
   return true when USB is connected
  */

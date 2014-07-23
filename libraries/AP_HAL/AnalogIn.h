@@ -9,7 +9,7 @@ public:
     virtual float read_average() = 0;
     virtual float read_latest() = 0;
     virtual void set_pin(uint8_t p) = 0;
-
+	//virtual int read_raw() = 0;
     // optionally allow setting of a pin that stops the device from
     // reading. This is needed for sonar devices where you have more
     // than one sonar, and you want to stop them interfering with each

@@ -18,7 +18,9 @@ public:
     virtual void    mode(uint8_t output) = 0;
     virtual uint8_t read() = 0;
     virtual void    write(uint8_t value) = 0;
+	virtual void    pulse();
     virtual void    toggle() = 0;
+	virtual unsigned long pulseIn(uint8_t pin, uint8_t state, unsigned long timeout);
 };
 
 class AP_HAL::GPIO {

@@ -19,7 +19,8 @@
 
 #include <GCS.h>
 #include <AP_AHRS.h>
-
+//#include defines.h>
+#include "defines.h"
 extern const AP_HAL::HAL& hal;
 
 uint32_t GCS_MAVLINK::last_radio_status_remrssi_ms;
@@ -220,7 +221,7 @@ void GCS_MAVLINK::send_ahrs2(AP_AHRS &ahrs)
 /*
   handle a MISSION_REQUEST_LIST mavlink packet
  */
-void GCS_MAVLINK::handle_mission_request_list(AP_Mission &mission, mavlink_message_t *msg)
+/*void GCS_MAVLINK::handle_mission_request_list(AP_Mission &mission, mavlink_message_t *msg)
 {
     // decode
     mavlink_mission_request_list_t packet;
@@ -238,12 +239,12 @@ void GCS_MAVLINK::handle_mission_request_list(AP_Mission &mission, mavlink_messa
     waypoint_receiving = false;             // record that we are sending commands (i.e. not receiving)
     waypoint_dest_sysid = msg->sysid;       // record system id of GCS who has requested the commands
     waypoint_dest_compid = msg->compid;     // record component id of GCS who has requested the commands
-}
+}*/
 
 /*
   handle a MISSION_REQUEST mavlink packet
  */
-void GCS_MAVLINK::handle_mission_request(AP_Mission &mission, mavlink_message_t *msg)
+/*void GCS_MAVLINK::handle_mission_request(AP_Mission &mission, mavlink_message_t *msg)
 {
     AP_Mission::Mission_Command cmd;
     // decode
@@ -281,7 +282,7 @@ void GCS_MAVLINK::handle_mission_request(AP_Mission &mission, mavlink_message_t 
       avoid the _send() function to save memory on APM2, as it avoids
       the stack usage of the _send() function by using the already
       declared ret_packet above
-     */
+     *//*
     ret_packet.target_system = msg->sysid;
     ret_packet.target_component = msg->compid;
     ret_packet.seq = packet.seq;
@@ -297,12 +298,12 @@ void GCS_MAVLINK::handle_mission_request(AP_Mission &mission, mavlink_message_t 
 mission_item_send_failed:
     // send failure message
     mavlink_msg_mission_ack_send(chan, msg->sysid, msg->compid, MAV_MISSION_ERROR);
-}
+}*/
 
 /*
   handle a MISSION_SET_CURRENT mavlink packet
  */
-void GCS_MAVLINK::handle_mission_set_current(AP_Mission &mission, mavlink_message_t *msg)
+/*void GCS_MAVLINK::handle_mission_set_current(AP_Mission &mission, mavlink_message_t *msg)
 {
     // decode
     mavlink_mission_set_current_t packet;
@@ -317,12 +318,12 @@ void GCS_MAVLINK::handle_mission_set_current(AP_Mission &mission, mavlink_messag
     if (mission.set_current_cmd(packet.seq)) {
         mavlink_msg_mission_current_send(chan, mission.get_current_nav_cmd().index);
     }
-}
+}*/
 
 /*
   handle a MISSION_COUNT mavlink packet
  */
-void GCS_MAVLINK::handle_mission_count(AP_Mission &mission, mavlink_message_t *msg)
+/*void GCS_MAVLINK::handle_mission_count(AP_Mission &mission, mavlink_message_t *msg)
 {
     // decode
     mavlink_mission_count_t packet;
@@ -349,12 +350,12 @@ void GCS_MAVLINK::handle_mission_count(AP_Mission &mission, mavlink_message_t *m
     waypoint_request_i = 0;                 // reset the next expected command number to zero
     waypoint_request_last = packet.count;   // record how many commands we expect to receive
     waypoint_timelast_request = 0;          // set time we last requested commands to zero
-}
+}*/
 
 /*
   handle a MISSION_CLEAR_ALL mavlink packet
  */
-void GCS_MAVLINK::handle_mission_clear_all(AP_Mission &mission, mavlink_message_t *msg)
+/*void GCS_MAVLINK::handle_mission_clear_all(AP_Mission &mission, mavlink_message_t *msg)
 {
     // decode
     mavlink_mission_clear_all_t packet;
@@ -373,12 +374,12 @@ void GCS_MAVLINK::handle_mission_clear_all(AP_Mission &mission, mavlink_message_
         // send nack
         mavlink_msg_mission_ack_send(chan, msg->sysid, msg->compid, 1);
     }
-}
+}*/
 
 /*
   handle a MISSION_WRITE_PARTIAL_LIST mavlink packet
  */
-void GCS_MAVLINK::handle_mission_write_partial_list(AP_Mission &mission, mavlink_message_t *msg)
+/*void GCS_MAVLINK::handle_mission_write_partial_list(AP_Mission &mission, mavlink_message_t *msg)
 {
     // decode
     mavlink_mission_write_partial_list_t packet;
@@ -402,7 +403,7 @@ void GCS_MAVLINK::handle_mission_write_partial_list(AP_Mission &mission, mavlink
     waypoint_receiving   = true;
     waypoint_request_i   = packet.start_index;
     waypoint_request_last= packet.end_index;
-}
+}*/
 
 /*
   return true if a channel has flow control
@@ -697,7 +698,7 @@ void GCS_MAVLINK::handle_radio_status(mavlink_message_t *msg, DataFlash_Class &d
 /*
   handle an incoming mission item
  */
-void GCS_MAVLINK::handle_mission_item(mavlink_message_t *msg, AP_Mission &mission)
+/*void GCS_MAVLINK::handle_mission_item(mavlink_message_t *msg, AP_Mission &mission)
 {
     mavlink_mission_item_t packet;
     uint8_t result = MAV_MISSION_ACCEPTED;
@@ -803,8 +804,112 @@ mission_ack:
         msg->sysid,
         msg->compid,
         result);
-}
+}*/
 
+void GCS_MAVLINK::handle_manual_setpoint(mavlink_message_t *msg,AC_AttitudeControl *ac_ctrl,AC_PosControl *pos_ctrl){
+
+	mavlink_manual_setpoint_t packet;
+	mavlink_msg_manual_setpoint_decode(msg,&packet);
+
+	// IF message is not intended for this component return immediately
+	//TODO: figure out way to do this check without rebuilding message
+    /*if (mavlink_check_target(packet.target_system, packet.target_component)) {
+        return;
+    }*/ 
+
+	if(packet.mode_switch!=ac_ctrl->get_mode()) //If the mode changes set to new value
+		ac_ctrl->set_mode(packet.mode_switch);
+	
+	//mavlink thrust value is a normalized value, we can scale appropriately for different purposes
+	
+	switch(packet.mode_switch){
+	
+		case MAN_STABILIZE: //MAN_STABILIZE: // 0 sets roll pitch yawrate thrust
+		{
+			ac_ctrl->set_ef_targets_yawrate(RadiansToCentiDegrees(packet.roll),
+											RadiansToCentiDegrees(packet.pitch),
+											RadiansToCentiDegrees(packet.yaw));
+			ac_ctrl->set_thrust((int16_t)(1000*packet.thrust));
+		
+			break;
+		}
+		case MAN_ALT_HOLD:// MAN_ALT_HOLD: //1 sets roll pitch yawspeed and climbrate
+		{
+			ac_ctrl->set_ef_targets_yawrate(RadiansToCentiDegrees(packet.roll),
+											RadiansToCentiDegrees(packet.pitch),
+											RadiansToCentiDegrees(packet.yaw));
+			pos_ctrl->set_target_climb_rate(pos_ctrl->get_max_climb_rate()*packet.thrust);
+			break;
+		}
+		case MAN_AUTO:// MAN_AUTO:  //2 sets roll pitch and yaw angle and climbrate
+		{
+			ac_ctrl->set_ef_targets(RadiansToCentiDegrees(packet.roll),
+									RadiansToCentiDegrees(packet.pitch),
+									RadiansToCentiDegrees(packet.yaw));
+	//mavlink thrust value is a normalized value, we can scale appropriately for different purposes
+			pos_ctrl->set_target_climb_rate(pos_ctrl->get_max_climb_rate()*packet.thrust);
+			break;
+		}
+		case MAN_ACRO:// MAN_ACRO:  //3 sets rollrate pitchrate yawrate climbrate
+		{
+		
+			ac_ctrl->set_bf_rate_targets(RadiansToCentiDegrees(packet.roll),
+										 RadiansToCentiDegrees(packet.pitch),
+										 RadiansToCentiDegrees(packet.yaw));
+			pos_ctrl->set_target_climb_rate(pos_ctrl->get_max_climb_rate()*packet.thrust);
+			break;
+		}
+		case MAN_FREE:// MAN_FREE: //4 sets rollrate pitchrate yawrate and thrust
+		{
+			ac_ctrl->set_bf_rate_targets(RadiansToCentiDegrees(packet.roll),
+										 RadiansToCentiDegrees(packet.pitch),
+										 RadiansToCentiDegrees(packet.yaw));
+			ac_ctrl->set_thrust((int16_t)(1000*packet.thrust));
+			break;
+		}
+		default:
+		{
+		
+			break;
+		}
+	
+	
+	}
+
+	
+}
+// handle a set roll pitch yaw thrust message
+/*void GCS_MAVLINK::handle_set_roll_pitch_yaw_thrust(mavlink_message_t *msg,AC_AttitudeControl *ac_ctrl,AC_PosControl *pos_ctrl, Parameters *params){
+
+	mavlink_set_roll_pitch_yaw_thrust_t packet;
+	mavlink_msg_set_roll_pitch_yaw_thrust_decode(msg,&packet);
+
+	// IF message is not intended for this component return immediately
+    if (mavlink_check_target(packet.target_system, packet.target_component)) {
+        return;
+    }
+	
+	ac_ctrl->set_ef_targets(packet.roll,packet.pitch,packet.yaw);
+	//mavlink thrust value is a normalized value, we can scale appropriately for different purposes
+	
+	pos_ctrl->set_target_climb_rate(params.pilot_velocity_z_max*packet.thrust);
+	
+}*/
+
+/*void GCS_MAVLINK::handle_set_roll_pitch_yaw_speed_thrust(mavlink_message_t *msg,AC_AttitudeControl *ac_ctrl,AC_PosControl *pos_ctrl){
+
+	mavlink_set_roll_pitch_yaw_speed_thrust_t packet;
+	mavlink_msg_set_roll_pitch_yaw_speed_thrust_decode(msg,&packet);
+
+	// IF message is not intended for this component return immediately
+    if (mavlink_check_target(packet.target_system, packet.target_component)) {
+        return;
+    }
+	
+	ac_ctrl->set_ef_targets(packet.roll,packet.pitch,packet.yaw);
+	pos_ctrl->set_target_climb_rate(packet.thrust);
+	
+}*/
 // send a message using mavlink, handling message queueing
 void GCS_MAVLINK::send_message(enum ap_message id)
 {

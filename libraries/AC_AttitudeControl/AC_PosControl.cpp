@@ -137,6 +137,18 @@ void AC_PosControl::set_alt_target_from_climb_rate(float climb_rate_cms, float d
         _pos_target.z += climb_rate_cms * _dt;
     }
 }
+/// set_alt_target_from_climb_rate using internal target climbrate - adjusts target up or down using a climb rate in cm/s
+///     should be called continuously (with dt set to be the expected time between calls)
+///     actual position target will be moved no faster than the speed_down and speed_up
+///     target will also be stopped if the motors hit their limits or leash length is exceeded
+void AC_PosControl::set_alt_target_from_climb_rate(float dt)
+{
+    // adjust desired alt if motors have not hit their limits
+    // To-Do: add check of _limit.pos_up and _limit.pos_down?
+    if ((_target_climb_rate_cms<0 && !_motors.limit.throttle_lower) || (_target_climb_rate_cms>0 && !_motors.limit.throttle_upper)) {
+        _pos_target.z += _target_climb_rate_cms * _dt;
+    }
+}
 
 // get_alt_error - returns altitude error in cm
 float AC_PosControl::get_alt_error() const
